@@ -3,7 +3,9 @@ import json
 import asyncio
 import threading
 import io
-from flask import Flask, request, jsonify, Response
+import secrets
+from functools import wraps
+from flask import Flask, request, jsonify, Response, session, redirect
 from flask_cors import CORS
 from dotenv import load_dotenv
 import discord
@@ -13,6 +15,21 @@ load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
+app.secret_key = os.environ.get("SECRET_KEY", secrets.token_hex(32))
+
+# ===== Auth config =====
+DASHBOARD_USER = os.environ.get("DASHBOARD_USER", "admin")
+DASHBOARD_PASS = os.environ.get("DASHBOARD_PASS", "")
+
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get("logged_in"):
+            if request.path.startswith("/api/"):
+                return jsonify({"error": "unauthorized"}), 401
+            return redirect("/login")
+        return f(*args, **kwargs)
+    return decorated
 
 # ===== Config =====
 BOT_TOKEN         = os.environ["BOT_TOKEN"]
@@ -406,6 +423,7 @@ INDEX_HTML = """<!DOCTYPE html>
   <div class="flex">
     <div class="status-dot" id="statusDot" title="حالة البوت"></div>
     <span id="statusText" style="font-size:.85rem;color:var(--muted)">جاري الاتصال...</span>
+    <button onclick="doLogout()" style="background:transparent;border:1px solid #c0392b;color:#c0392b;border-radius:7px;padding:.35rem .85rem;font-family:Cairo,sans-serif;font-size:.82rem;font-weight:700;cursor:pointer;">🚪 خروج</button>
   </div>
 </header>
 
@@ -844,6 +862,12 @@ function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>');
 }
 
+// ===== Logout =====
+async function doLogout() {
+  await fetch('/api/logout', {method:'POST'});
+  window.location.href = '/login';
+}
+
 // ===== Init =====
 checkStatus();
 setInterval(checkStatus, 30000);
@@ -916,10 +940,12 @@ async def on_member_remove(member: discord.Member):
 # ===== Routes =====
 
 @app.route("/")
+@login_required
 def index():
     return Response(INDEX_HTML, mimetype="text/html")
 
 @app.route("/api/tracked", methods=["GET"])
+@login_required
 def api_tracked():
     tracked = load_tracked()
     guild = get_guild()
@@ -950,6 +976,7 @@ def api_tracked():
     return jsonify(result)
 
 @app.route("/api/tracked", methods=["POST"])
+@login_required
 def api_add_tracked():
     data = request.json
     ids  = data.get("ids", [])
@@ -972,6 +999,7 @@ def api_add_tracked():
     return jsonify({"added": added, "missing": missing})
 
 @app.route("/api/tracked/<uid>", methods=["DELETE"])
+@login_required
 def api_remove_tracked(uid):
     tracked = load_tracked()
     tracked.pop(uid, None)
@@ -979,6 +1007,7 @@ def api_remove_tracked(uid):
     return jsonify({"ok": True})
 
 @app.route("/api/promote", methods=["POST"])
+@login_required
 def api_promote():
     data = request.json
     ids  = data.get("ids", [])
@@ -1012,6 +1041,7 @@ def api_promote():
     return jsonify(results)
 
 @app.route("/api/send", methods=["POST"])
+@login_required
 def api_send():
     channel_id = request.form.get("channel_id", "")
     message    = request.form.get("message", "")
@@ -1032,10 +1062,12 @@ def api_send():
     return jsonify(result)
 
 @app.route("/api/templates", methods=["GET"])
+@login_required
 def api_get_templates():
     return jsonify(load_templates())
 
 @app.route("/api/templates", methods=["POST"])
+@login_required
 def api_add_template():
     t = request.json
     templates = load_templates()
@@ -1045,6 +1077,7 @@ def api_add_template():
     return jsonify(t)
 
 @app.route("/api/templates/<int:tid>", methods=["PUT"])
+@login_required
 def api_update_template(tid):
     templates = load_templates()
     for i, t in enumerate(templates):
@@ -1055,14 +1088,173 @@ def api_update_template(tid):
     return jsonify({"error": "not found"}), 404
 
 @app.route("/api/templates/<int:tid>", methods=["DELETE"])
+@login_required
 def api_delete_template(tid):
     templates = [t for t in load_templates() if t.get("id") != tid]
     save_templates(templates)
     return jsonify({"ok": True})
 
 @app.route("/api/ranks", methods=["GET"])
+@login_required
 def api_ranks():
     return jsonify(RANKS)
+
+
+# ===== Login HTML =====
+LOGIN_HTML = """<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>تسجيل الدخول</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Cairo', sans-serif;
+    background: #0a0c0f;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 39px, #ffffff04 39px, #ffffff04 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, #ffffff04 39px, #ffffff04 40px);
+  }
+  .box {
+    background: #161b22;
+    border: 1px solid #21262d;
+    border-top: 3px solid #d4a843;
+    border-radius: 16px;
+    padding: 2.5rem 2rem;
+    width: min(400px, 92vw);
+    box-shadow: 0 20px 60px #000a;
+  }
+  .logo {
+    text-align: center;
+    margin-bottom: 2rem;
+  }
+  .logo-icon {
+    font-size: 2.8rem;
+    display: block;
+    margin-bottom: .5rem;
+  }
+  .logo h1 {
+    color: #d4a843;
+    font-size: 1.4rem;
+    font-weight: 900;
+  }
+  .logo p {
+    color: #8b949e;
+    font-size: .85rem;
+    margin-top: .25rem;
+  }
+  label {
+    display: block;
+    color: #8b949e;
+    font-size: .85rem;
+    margin-bottom: .35rem;
+    margin-top: 1rem;
+  }
+  input {
+    width: 100%;
+    background: #111418;
+    border: 1px solid #21262d;
+    border-radius: 8px;
+    color: #e6edf3;
+    padding: .7rem 1rem;
+    font-family: 'Cairo', sans-serif;
+    font-size: .95rem;
+    outline: none;
+    transition: border-color .2s;
+  }
+  input:focus { border-color: #d4a843; }
+  .btn {
+    width: 100%;
+    margin-top: 1.5rem;
+    padding: .8rem;
+    background: linear-gradient(135deg, #d4a843, #f0c060);
+    color: #0a0c0f;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Cairo', sans-serif;
+    font-weight: 900;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: filter .2s;
+  }
+  .btn:hover { filter: brightness(1.1); }
+  .error {
+    background: #c0392b22;
+    border: 1px solid #c0392b;
+    color: #e74c3c;
+    border-radius: 8px;
+    padding: .6rem 1rem;
+    font-size: .88rem;
+    margin-top: 1rem;
+    text-align: center;
+    display: none;
+  }
+  .error.show { display: block; }
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo">
+    <span class="logo-icon">⚔️</span>
+    <h1>لوحة القيادة</h1>
+    <p>أدخل بياناتك للمتابعة</p>
+  </div>
+  <div id="err" class="error">اسم المستخدم أو كلمة المرور غلط</div>
+  <label>اسم المستخدم</label>
+  <input type="text" id="usr" placeholder="username" autocomplete="username">
+  <label>كلمة المرور</label>
+  <input type="password" id="pwd" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+  <button class="btn" onclick="doLogin()">🔓 دخول</button>
+</div>
+<script>
+async function doLogin() {
+  const usr = document.getElementById('usr').value;
+  const pwd = document.getElementById('pwd').value;
+  const r = await fetch('/api/login', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({username: usr, password: pwd})
+  });
+  const d = await r.json();
+  if (d.ok) {
+    window.location.href = '/';
+  } else {
+    const err = document.getElementById('err');
+    err.classList.add('show');
+    setTimeout(() => err.classList.remove('show'), 3000);
+  }
+}
+</script>
+</body>
+</html>"""
+
+@app.route("/login")
+def login_page():
+    if session.get("logged_in"):
+        return redirect("/")
+    return Response(LOGIN_HTML, mimetype="text/html")
+
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    data = request.json or {}
+    username = data.get("username", "")
+    password = data.get("password", "")
+    if username == DASHBOARD_USER and password == DASHBOARD_PASS and DASHBOARD_PASS:
+        session["logged_in"] = True
+        session.permanent = True
+        return jsonify({"ok": True})
+    return jsonify({"ok": False}), 401
+
+@app.route("/api/logout", methods=["POST"])
+def api_logout():
+    session.clear()
+    return jsonify({"ok": True})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
