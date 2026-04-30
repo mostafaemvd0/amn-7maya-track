@@ -897,7 +897,7 @@ def get_guild():
 
 def run_coro(coro):
     future = asyncio.run_coroutine_threadsafe(coro, loop)
-    return future.result(timeout=15)
+    return future.result(timeout=120)  # increased for large batch fetch
 
 # ===== File helpers =====
 def load_tracked():
@@ -993,24 +993,36 @@ def api_add_tracked():
     added = []; missing = []
     tracked = load_tracked()
 
-    async def fetch_all():
-        for uid in ids:
+    BATCH = 10  # process 10 members at a time
+
+    async def fetch_batch(batch):
+        for uid in batch:
             uid_str = str(uid)
-            try:
-                member = await guild.fetch_member(int(uid))
-                rank = None
-                for role in member.roles:
-                    if role.id in RANK_IDS:
-                        rank = role.name; break
-                tracked[uid_str] = {"name": member.display_name, "rank": rank or "-"}
-                added.append(uid_str)
-            except discord.NotFound:
-                missing.append(uid_str)
-            except discord.HTTPException:
-                missing.append(uid_str)
+            member = guild.get_member(int(uid))
+            if member is None:
+                try:
+                    member = await guild.fetch_member(int(uid))
+                    await asyncio.sleep(0.2)
+                except discord.NotFound:
+                    missing.append(uid_str)
+                    continue
+                except discord.HTTPException as e:
+                    print(f"HTTP error {uid_str}: {e.status} {e.text}")
+                    missing.append(uid_str)
+                    continue
+            rank = None
+            for role in member.roles:
+                if role.id in RANK_IDS:
+                    rank = role.name; break
+            tracked[uid_str] = {"name": member.display_name, "rank": rank or "-"}
+            added.append(uid_str)
 
     if guild:
-        run_coro(fetch_all())
+        # split into batches of 10 and run each
+        batches = [ids[i:i+BATCH] for i in range(0, len(ids), BATCH)]
+        for batch in batches:
+            future = asyncio.run_coroutine_threadsafe(fetch_batch(batch), loop)
+            future.result(timeout=60)
     else:
         missing.extend([str(uid) for uid in ids])
 
