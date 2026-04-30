@@ -701,23 +701,35 @@ async function doPromote() {
   const selected = [...document.querySelectorAll('.promote-card.selected')].map(c => c.id.replace('pc-',''));
   if (!selected.length) { toast('اختار على الأقل عضو واحد', 'error'); return; }
   document.getElementById('promoteBtn').disabled = true;
-  const r = await fetch('/api/promote', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({ids: selected})
-  });
-  const results = await r.json();
-  const statusMap = {ok:'✅', not_found:'❌ مش في السيرفر', no_rank:'⚠️ بدون رتبة', max_rank:'🏆 أعلى رتبة', role_missing:'❌ رتبة مش موجودة'};
-  const html = results.map(res => {
-    const label = res.status === 'ok'
-      ? `<span class="result-ok">✅ ${res.name}: ${res.from} ← ${res.to}</span>`
-      : `<span class="result-err">${statusMap[res.status]||res.status}: ${res.id}</span>`;
-    return label;
-  }).join('<br>');
-  document.getElementById('promoteResult').innerHTML = html;
+  document.getElementById('promoteResult').innerHTML = '<div class="spinner"></div>';
+  try {
+    const r = await fetch('/api/promote', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ids: selected})
+    });
+    if (r.status === 401) { window.location.href = '/login'; return; }
+    if (!r.ok) {
+      const txt = await r.text();
+      document.getElementById('promoteResult').innerHTML = `<span class="result-err">❌ خطأ ${r.status}: ${txt.substring(0,200)}</span>`;
+      document.getElementById('promoteBtn').disabled = false;
+      return;
+    }
+    const results = await r.json();
+    const statusMap = {ok:'✅', not_found:'❌ مش في السيرفر', no_rank:'⚠️ بدون رتبة', max_rank:'🏆 أعلى رتبة', role_missing:'❌ رتبة مش موجودة'};
+    const html = results.map(res => {
+      const label = res.status === 'ok'
+        ? `<span class="result-ok">✅ ${res.name}: ${res.from} ← ${res.to}</span>`
+        : `<span class="result-err">${statusMap[res.status]||res.status}: ${res.id}</span>`;
+      return label;
+    }).join('<br>');
+    document.getElementById('promoteResult').innerHTML = html || '<span class="result-err">مفيش نتايج</span>';
+    toast(`تمت الترقية: ${results.filter(r=>r.status==='ok').length} عضو`, 'success');
+    loadTracked();
+  } catch(e) {
+    document.getElementById('promoteResult').innerHTML = `<span class="result-err">❌ خطأ: ${e.message}</span>`;
+  }
   document.getElementById('promoteBtn').disabled = false;
-  toast(`تمت الترقية: ${results.filter(r=>r.status==='ok').length} عضو`, 'success');
-  loadTracked();
 }
 
 // ===== MESSAGES =====
@@ -1071,7 +1083,11 @@ def api_promote():
             results.append({"id": uid, "name": member.display_name,
                             "from": current_rank_role.name, "to": next_role.name, "status": "ok"})
 
-    run_coro(do_promote())
+    try:
+        run_coro(do_promote())
+    except Exception as e:
+        print(f"Promote error: {e}")
+        return jsonify({"error": str(e)}), 500
     return jsonify(results)
 
 @app.route("/api/send", methods=["POST"])
