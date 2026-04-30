@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة القيادة العسكرية</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #0a0c0f;
+    --surface:  #111418;
+    --card:     #161b22;
+    --border:   #21262d;
+    --gold:     #d4a843;
+    --gold2:    #f0c060;
+    --red:      #c0392b;
+    --green:    #27ae60;
+    --blue:     #2980b9;
+    --text:     #e6edf3;
+    --muted:    #8b949e;
+    --accent:   #1f6feb;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Cairo', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 39px, #ffffff04 39px, #ffffff04 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, #ffffff04 39px, #ffffff04 40px);
+  }
+
+  /* ===== Header ===== */
+  header {
+    background: linear-gradient(135deg, #0d1117 0%, #161b22 50%, #0d1117 100%);
+    border-bottom: 2px solid var(--gold);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 70px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 4px 30px #d4a84320;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    font-size: 1.3rem;
+    font-weight: 900;
+    color: var(--gold);
+    letter-spacing: 1px;
+  }
+
+  .logo-icon {
+    width: 38px;
+    height: 38px;
+    background: linear-gradient(135deg, var(--gold), var(--gold2));
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+  }
+
+  .status-dot {
+    width: 10px; height: 10px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+    box-shadow: 0 0 8px var(--green);
+  }
+
+  @keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50%      { opacity:.6; transform:scale(1.3); }
+  }
+
+  /* ===== Nav tabs ===== */
+  nav {
+    display: flex;
+    gap: 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    overflow-x: auto;
+  }
+
+  .nav-tab {
+    padding: .9rem 1.5rem;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: .95rem;
+    color: var(--muted);
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+    transition: all .2s;
+    user-select: none;
+  }
+
+  .nav-tab:hover { color: var(--text); }
+  .nav-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  /* ===== Main layout ===== */
+  main { padding: 2rem; max-width: 1200px; margin: auto; }
+
+  .section { display: none; animation: fadeIn .3s ease; }
+  .section.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity:0; transform:translateY(8px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+
+  /* ===== Cards ===== */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .card-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--gold);
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+
+  /* ===== Inputs ===== */
+  input[type=text], input[type=number], textarea, select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: .65rem 1rem;
+    font-family: 'Cairo', sans-serif;
+    font-size: .9rem;
+    width: 100%;
+    transition: border-color .2s;
+    outline: none;
+  }
+
+  input[type=text]:focus,
+  input[type=number]:focus,
+  textarea:focus,
+  select:focus { border-color: var(--gold); }
+
+  textarea { resize: vertical; min-height: 100px; }
+
+  /* ===== Buttons ===== */
+  .btn {
+    padding: .65rem 1.4rem;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Cairo', sans-serif;
+    font-weight: 700;
+    font-size: .9rem;
+    cursor: pointer;
+    transition: all .2s;
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+  }
+
+  .btn-gold   { background: linear-gradient(135deg, var(--gold), var(--gold2)); color: #0a0c0f; }
+  .btn-red    { background: var(--red); color: #fff; }
+  .btn-green  { background: var(--green); color: #fff; }
+  .btn-blue   { background: var(--blue); color: #fff; }
+  .btn-ghost  { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+
+  .btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+  .btn:active { transform: translateY(0); }
+
+  .btn-sm { padding: .4rem .9rem; font-size: .82rem; }
+
+  /* ===== Member table ===== */
+  .member-table { width: 100%; border-collapse: collapse; }
+  .member-table th {
+    text-align: right;
+    padding: .75rem 1rem;
+    font-size: .82rem;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+
+  .member-table td {
+    padding: .75rem 1rem;
+    border-bottom: 1px solid #ffffff08;
+    font-size: .9rem;
+    vertical-align: middle;
+  }
+
+  .member-table tr:hover td { background: #ffffff04; }
+
+  .avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 2px solid var(--gold);
+    object-fit: cover;
+  }
+
+  .rank-badge {
+    background: linear-gradient(135deg, #1a2030, #1e2840);
+    border: 1px solid var(--gold);
+    color: var(--gold2);
+    padding: .2rem .7rem;
+    border-radius: 20px;
+    font-size: .78rem;
+    font-weight: 700;
+  }
+
+  .check-col { width: 40px; }
+  .check-col input[type=checkbox] {
+    width: 16px; height: 16px;
+    cursor: pointer;
+    accent-color: var(--gold);
+  }
+
+  /* ===== Grid ===== */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  @media(max-width:700px) { .grid2 { grid-template-columns: 1fr; } }
+
+  .flex { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; }
+  .flex-end { justify-content: flex-end; }
+  .mt { margin-top: 1rem; }
+
+  /* ===== Toast ===== */
+  #toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--card);
+    border: 1px solid var(--gold);
+    border-radius: 10px;
+    padding: .75rem 1.5rem;
+    color: var(--text);
+    font-weight: 600;
+    z-index: 999;
+    transition: transform .3s ease;
+    box-shadow: 0 8px 32px #000a;
+  }
+
+  #toast.show { transform: translateX(-50%) translateY(0); }
+  #toast.error { border-color: var(--red); color: var(--red); }
+  #toast.success { border-color: var(--green); color: var(--green); }
+
+  /* ===== File upload ===== */
+  .file-drop {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s;
+    color: var(--muted);
+    font-size: .9rem;
+  }
+
+  .file-drop:hover, .file-drop.drag { border-color: var(--gold); color: var(--gold); }
+  .file-drop input { display: none; }
+
+  /* ===== Templates ===== */
+  .template-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-bottom: .75rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .template-text {
+    flex: 1;
+    font-size: .9rem;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    color: var(--text);
+  }
+
+  .template-name {
+    font-size: .78rem;
+    color: var(--gold);
+    font-weight: 700;
+    margin-bottom: .35rem;
+  }
+
+  /* ===== Promote section ===== */
+  .promote-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem;
+  }
+
+  .promote-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+  }
+
+  .promote-card.selected {
+    border-color: var(--gold);
+    background: #d4a84312;
+  }
+
+  .promote-card .info { flex: 1; }
+  .promote-card .pname { font-weight: 700; font-size: .95rem; }
+  .promote-card .pranks { font-size: .8rem; color: var(--muted); margin-top: .2rem; }
+
+  .arrow-icon { color: var(--gold); font-size: 1.1rem; }
+
+  /* Loading */
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    margin: 2rem auto;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty-state { text-align: center; color: var(--muted); padding: 3rem 1rem; font-size: 1rem; }
+  .empty-state .big { font-size: 2.5rem; margin-bottom: .5rem; }
+
+  /* result rows */
+  .result-ok  { color: var(--green); }
+  .result-err { color: var(--red); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚔️</div>
+    لوحة القيادة
+  </div>
+  <div class="flex">
+    <div class="status-dot" id="statusDot" title="حالة البوت"></div>
+    <span id="statusText" style="font-size:.85rem;color:var(--muted)">جاري الاتصال...</span>
+  </div>
+</header>
+
+<nav>
+  <div class="nav-tab active" onclick="switchTab('tracked')">👁️ المتابَعون</div>
+  <div class="nav-tab" onclick="switchTab('promote')">🎖️ الترقيات</div>
+  <div class="nav-tab" onclick="switchTab('messages')">📨 الرسائل</div>
+  <div class="nav-tab" onclick="switchTab('templates')">📋 القوالب</div>
+</nav>
+
+<main>
+
+<!-- ============================= TAB: TRACKED ============================= -->
+<div id="tab-tracked" class="section active">
+
+  <div class="card">
+    <div class="card-title">➕ إضافة أعضاء للمتابعة</div>
+    <textarea id="bulkIds" placeholder="ضع الـ IDs هنا مفصولة بمسافة أو فاصلة أو سطر جديد&#10;مثال:&#10;123456789012345678&#10;987654321098765432"></textarea>
+    <div class="flex mt">
+      <button class="btn btn-gold" onclick="bulkAdd()">➕ إضافة</button>
+      <button class="btn btn-ghost" onclick="loadTracked()">🔄 تحديث</button>
+    </div>
+    <div id="addResult" style="margin-top:.75rem;font-size:.88rem;"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">👁️ قائمة المتابعة</div>
+    <div id="trackedBody"><div class="spinner"></div></div>
+  </div>
+
+</div>
+
+<!-- ============================= TAB: PROMOTE ============================= -->
+<div id="tab-promote" class="section">
+
+  <div class="card">
+    <div class="card-title">🎖️ ترقية جماعية</div>
+    <p style="color:var(--muted);font-size:.88rem;margin-bottom:1rem;">اختار الأعضاء اللي عايز تعمل ترقيتهم — كل واحد هيتحول لأعلى رتبة تلقائياً</p>
+    <div class="flex" style="margin-bottom:1rem;">
+      <button class="btn btn-ghost btn-sm" onclick="selectAllPromote()">تحديد الكل</button>
+      <button class="btn btn-ghost btn-sm" onclick="deselectAllPromote()">إلغاء الكل</button>
+      <button class="btn btn-gold" onclick="doPromote()" id="promoteBtn" style="margin-right:auto;">⬆️ ترقية المحددين</button>
+    </div>
+    <div id="promoteGrid"><div class="spinner"></div></div>
+    <div id="promoteResult" style="margin-top:1rem;font-size:.88rem;"></div>
+  </div>
+
+</div>
+
+<!-- ============================= TAB: MESSAGES ============================= -->
+<div id="tab-messages" class="section">
+
+  <div class="grid2">
+    <div class="card" style="margin-bottom:0">
+      <div class="card-title">📨 إرسال رسالة</div>
+
+      <div style="margin-bottom:.75rem;">
+        <label style="font-size:.85rem;color:var(--muted);display:block;margin-bottom:.35rem;">ID الشانيل</label>
+        <input type="text" id="sendChannelId" placeholder="123456789012345678">
+      </div>
+
+      <div style="margin-bottom:.75rem;">
+        <label style="font-size:.85rem;color:var(--muted);display:block;margin-bottom:.35rem;">نص الرسالة</label>
+        <textarea id="sendMessage" placeholder="اكتب رسالتك هنا..."></textarea>
+      </div>
+
+      <div style="margin-bottom:1rem;">
+        <label style="font-size:.85rem;color:var(--muted);display:block;margin-bottom:.35rem;">ملف GIF (اختياري)</label>
+        <div class="file-drop" id="dropZone" onclick="document.getElementById('gifInput').click()">
+          <input type="file" id="gifInput" accept="image/gif,video/mp4" onchange="onGifChosen(event)">
+          <div id="dropLabel">📎 اضغط لاختيار GIF</div>
+        </div>
+      </div>
+
+      <div class="flex">
+        <button class="btn btn-gold" onclick="sendMessage()">📤 إرسال</button>
+        <button class="btn btn-ghost" onclick="clearGif()">🗑️ حذف GIF</button>
+      </div>
+      <div id="sendResult" style="margin-top:.75rem;font-size:.88rem;"></div>
+    </div>
+
+    <div class="card" style="margin-bottom:0">
+      <div class="card-title">📋 استخدام قالب</div>
+      <p style="color:var(--muted);font-size:.85rem;margin-bottom:1rem;">اضغط على أي قالب لتحميله في خانة الرسالة</p>
+      <div id="templatesMiniList"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================= TAB: TEMPLATES ============================= -->
+<div id="tab-templates" class="section">
+
+  <div class="card">
+    <div class="card-title">➕ قالب جديد</div>
+    <div style="margin-bottom:.75rem;">
+      <input type="text" id="tplName" placeholder="اسم القالب (مثال: إعلان ترقية)">
+    </div>
+    <textarea id="tplContent" placeholder="محتوى القالب..."></textarea>
+    <div class="flex mt">
+      <button class="btn btn-gold" onclick="addTemplate()">💾 حفظ</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 القوالب المحفوظة</div>
+    <div id="templatesList"><div class="spinner"></div></div>
+  </div>
+
+</div>
+
+</main>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Edit template modal -->
+<div id="editModal" style="display:none;position:fixed;inset:0;background:#000a;z-index:200;align-items:center;justify-content:center;">
+  <div style="background:var(--card);border:1px solid var(--gold);border-radius:14px;padding:1.5rem;width:min(560px,95vw);">
+    <div class="card-title">✏️ تعديل القالب</div>
+    <input type="hidden" id="editTplId">
+    <div style="margin-bottom:.75rem;">
+      <input type="text" id="editTplName" placeholder="اسم القالب">
+    </div>
+    <textarea id="editTplContent" style="min-height:140px;" placeholder="محتوى القالب..."></textarea>
+    <div class="flex mt flex-end">
+      <button class="btn btn-ghost" onclick="closeModal()">إلغاء</button>
+      <button class="btn btn-gold" onclick="saveEditTemplate()">💾 حفظ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== State =====
+let trackedData  = [];
+let promoteData  = [];  // same as tracked
+let templatesData = [];
+let selectedGif  = null;
+
+// ===== Tab switch =====
+function switchTab(name) {
+  document.querySelectorAll('.nav-tab').forEach((t,i) => t.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  const tabs = ['tracked','promote','messages','templates'];
+  const idx  = tabs.indexOf(name);
+  document.querySelectorAll('.nav-tab')[idx].classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  if (name === 'tracked' || name === 'promote') loadTracked();
+  if (name === 'messages' || name === 'templates') loadTemplates();
+}
+
+// ===== Toast =====
+function toast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = type ? `show ${type}` : 'show';
+  setTimeout(() => el.className = '', 3000);
+}
+
+// ===== Bot status check =====
+async function checkStatus() {
+  try {
+    const r = await fetch('/api/ranks');
+    if (r.ok) {
+      document.getElementById('statusDot').style.background = 'var(--green)';
+      document.getElementById('statusText').textContent = 'البوت متصل';
+    }
+  } catch {
+    document.getElementById('statusDot').style.background = 'var(--red)';
+    document.getElementById('statusText').textContent = 'غير متصل';
+  }
+}
+
+// ===== TRACKED =====
+async function loadTracked() {
+  document.getElementById('trackedBody').innerHTML = '<div class="spinner"></div>';
+  document.getElementById('promoteGrid').innerHTML  = '<div class="spinner"></div>';
+  try {
+    const r = await fetch('/api/tracked');
+    trackedData = await r.json();
+    renderTracked();
+    renderPromoteGrid();
+  } catch(e) {
+    document.getElementById('trackedBody').innerHTML = '<div class="empty-state"><div class="big">⚠️</div>تعذر تحميل البيانات</div>';
+  }
+}
+
+function renderTracked() {
+  const el = document.getElementById('trackedBody');
+  if (!trackedData.length) {
+    el.innerHTML = '<div class="empty-state"><div class="big">👁️</div>قائمة المتابعة فاضية</div>';
+    return;
+  }
+  el.innerHTML = `
+  <table class="member-table">
+    <thead>
+      <tr>
+        <th>العضو</th>
+        <th>الاسم في السيرفر</th>
+        <th>الـ ID</th>
+        <th>الرتبة</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      ${trackedData.map(m => `
+      <tr>
+        <td><img class="avatar" src="${m.avatar}" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'"></td>
+        <td>${m.name}</td>
+        <td><code style="color:var(--muted);font-size:.82rem">${m.id}</code></td>
+        <td><span class="rank-badge">${m.rank}</span></td>
+        <td><button class="btn btn-red btn-sm" onclick="removeTracked('${m.id}')">🗑️</button></td>
+      </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+async function bulkAdd() {
+  const text = document.getElementById('bulkIds').value;
+  const ids  = (text.match(/\d{17,20}/g) || []).map(Number);
+  if (!ids.length) { toast('مفيش IDs صالحة!', 'error'); return; }
+  const r = await fetch('/api/tracked', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ids})
+  });
+  const data = await r.json();
+  let html = '';
+  if (data.added.length)   html += `<span class="result-ok">✅ تمت إضافة: ${data.added.join(', ')}</span><br>`;
+  if (data.missing.length) html += `<span class="result-err">⚠️ مش في السيرفر: ${data.missing.join(', ')}</span>`;
+  document.getElementById('addResult').innerHTML = html;
+  document.getElementById('bulkIds').value = '';
+  toast(`تمت إضافة ${data.added.length} عضو`, 'success');
+  loadTracked();
+}
+
+async function removeTracked(uid) {
+  await fetch(`/api/tracked/${uid}`, {method:'DELETE'});
+  toast('تم الحذف', 'success');
+  loadTracked();
+}
+
+// ===== PROMOTE =====
+function renderPromoteGrid() {
+  const el = document.getElementById('promoteGrid');
+  if (!trackedData.length) {
+    el.innerHTML = '<div class="empty-state"><div class="big">👤</div>قائمة المتابعة فاضية — أضف أعضاء أولاً</div>';
+    return;
+  }
+  el.innerHTML = `<div class="promote-grid">
+    ${trackedData.map(m => `
+    <div class="promote-card" id="pc-${m.id}" onclick="togglePromote('${m.id}')">
+      <img class="avatar" src="${m.avatar}" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+      <div class="info">
+        <div class="pname">${m.name}</div>
+        <div class="pranks">الرتبة الحالية: <b>${m.rank}</b></div>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+function togglePromote(id) {
+  document.getElementById('pc-'+id).classList.toggle('selected');
+}
+
+function selectAllPromote() {
+  document.querySelectorAll('.promote-card').forEach(c => c.classList.add('selected'));
+}
+
+function deselectAllPromote() {
+  document.querySelectorAll('.promote-card').forEach(c => c.classList.remove('selected'));
+}
+
+async function doPromote() {
+  const selected = [...document.querySelectorAll('.promote-card.selected')].map(c => c.id.replace('pc-',''));
+  if (!selected.length) { toast('اختار على الأقل عضو واحد', 'error'); return; }
+  document.getElementById('promoteBtn').disabled = true;
+  const r = await fetch('/api/promote', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ids: selected})
+  });
+  const results = await r.json();
+  const statusMap = {ok:'✅', not_found:'❌ مش في السيرفر', no_rank:'⚠️ بدون رتبة', max_rank:'🏆 أعلى رتبة', role_missing:'❌ رتبة مش موجودة'};
+  const html = results.map(res => {
+    const label = res.status === 'ok'
+      ? `<span class="result-ok">✅ ${res.name}: ${res.from} ← ${res.to}</span>`
+      : `<span class="result-err">${statusMap[res.status]||res.status}: ${res.id}</span>`;
+    return label;
+  }).join('<br>');
+  document.getElementById('promoteResult').innerHTML = html;
+  document.getElementById('promoteBtn').disabled = false;
+  toast(`تمت الترقية: ${results.filter(r=>r.status==='ok').length} عضو`, 'success');
+  loadTracked();
+}
+
+// ===== MESSAGES =====
+function onGifChosen(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  selectedGif = file;
+  document.getElementById('dropLabel').textContent = '✅ ' + file.name;
+  document.getElementById('dropZone').classList.add('drag');
+}
+
+function clearGif() {
+  selectedGif = null;
+  document.getElementById('gifInput').value = '';
+  document.getElementById('dropLabel').textContent = '📎 اضغط لاختيار GIF';
+  document.getElementById('dropZone').classList.remove('drag');
+}
+
+async function sendMessage() {
+  const channelId = document.getElementById('sendChannelId').value.trim();
+  const message   = document.getElementById('sendMessage').value.trim();
+  if (!channelId) { toast('ادخل ID الشانيل', 'error'); return; }
+  if (!message && !selectedGif) { toast('اكتب رسالة أو ارفق GIF', 'error'); return; }
+
+  const fd = new FormData();
+  fd.append('channel_id', channelId);
+  fd.append('message', message);
+  if (selectedGif) fd.append('gif', selectedGif);
+
+  const r = await fetch('/api/send', {method:'POST', body:fd});
+  const data = await r.json();
+  if (data.ok) {
+    toast('تم الإرسال ✅', 'success');
+    document.getElementById('sendMessage').value = '';
+    clearGif();
+  } else {
+    toast('خطأ: ' + data.error, 'error');
+  }
+}
+
+// ===== TEMPLATES =====
+async function loadTemplates() {
+  try {
+    const r = await fetch('/api/templates');
+    templatesData = await r.json();
+    renderTemplates();
+    renderTemplatesMini();
+  } catch { }
+}
+
+function renderTemplates() {
+  const el = document.getElementById('templatesList');
+  if (!templatesData.length) {
+    el.innerHTML = '<div class="empty-state"><div class="big">📋</div>مفيش قوالب محفوظة</div>';
+    return;
+  }
+  el.innerHTML = templatesData.map(t => `
+  <div class="template-card">
+    <div style="flex:1">
+      <div class="template-name">${t.name || 'بدون اسم'}</div>
+      <div class="template-text">${escHtml(t.content)}</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.5rem;">
+      <button class="btn btn-blue btn-sm" onclick="openEditModal(${t.id})">✏️</button>
+      <button class="btn btn-red btn-sm" onclick="deleteTemplate(${t.id})">🗑️</button>
+    </div>
+  </div>`).join('');
+}
+
+function renderTemplatesMini() {
+  const el = document.getElementById('templatesMiniList');
+  if (!templatesData.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:.88rem">مفيش قوالب — أضف من تبويب القوالب</div>';
+    return;
+  }
+  el.innerHTML = templatesData.map(t => `
+  <div class="template-card" style="cursor:pointer" onclick="loadTemplate(${t.id})">
+    <div style="flex:1">
+      <div class="template-name">${t.name || 'بدون اسم'}</div>
+      <div class="template-text" style="max-height:50px;overflow:hidden;-webkit-mask-image:linear-gradient(to bottom,#fff 50%,transparent)">${escHtml(t.content)}</div>
+    </div>
+    <span style="color:var(--gold);font-size:1.2rem">←</span>
+  </div>`).join('');
+}
+
+function loadTemplate(id) {
+  const t = templatesData.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('sendMessage').value = t.content;
+  toast('تم تحميل القالب', 'success');
+}
+
+async function addTemplate() {
+  const name    = document.getElementById('tplName').value.trim();
+  const content = document.getElementById('tplContent').value.trim();
+  if (!content) { toast('اكتب محتوى القالب', 'error'); return; }
+  await fetch('/api/templates', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name, content})
+  });
+  document.getElementById('tplName').value = '';
+  document.getElementById('tplContent').value = '';
+  toast('تم حفظ القالب', 'success');
+  loadTemplates();
+}
+
+function openEditModal(id) {
+  const t = templatesData.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('editTplId').value      = t.id;
+  document.getElementById('editTplName').value    = t.name || '';
+  document.getElementById('editTplContent').value = t.content;
+  document.getElementById('editModal').style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('editModal').style.display = 'none';
+}
+
+async function saveEditTemplate() {
+  const id      = parseInt(document.getElementById('editTplId').value);
+  const name    = document.getElementById('editTplName').value.trim();
+  const content = document.getElementById('editTplContent').value.trim();
+  await fetch(`/api/templates/${id}`, {
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name, content})
+  });
+  closeModal();
+  toast('تم التحديث', 'success');
+  loadTemplates();
+}
+
+async function deleteTemplate(id) {
+  await fetch(`/api/templates/${id}`, {method:'DELETE'});
+  toast('تم الحذف', 'success');
+  loadTemplates();
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// ===== Init =====
+checkStatus();
+setInterval(checkStatus, 30000);
+loadTracked();
+loadTemplates();
+</script>
+</body>
+</html>
