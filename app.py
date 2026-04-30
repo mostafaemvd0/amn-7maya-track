@@ -951,24 +951,33 @@ def api_tracked():
     guild = get_guild()
     result = []
     to_delete = []
-    for uid, info in tracked.items():
-        member = guild.get_member(int(uid)) if guild else None
-        if member is None:
-            to_delete.append(uid)
-            continue
-        current_rank = None
-        for role in member.roles:
-            if role.id in RANK_IDS:
-                current_rank = role.name
-                break
-        result.append({
-            "id":        uid,
-            "name":      member.display_name,
-            "username":  str(member),
-            "avatar":    str(member.display_avatar.url),
-            "rank":      current_rank or info.get("rank", "-"),
-            "in_server": True,
-        })
+
+    async def fetch_all_tracked():
+        for uid, info in tracked.items():
+            # try cache first, fallback to fetch
+            member = guild.get_member(int(uid))
+            if member is None:
+                try:
+                    member = await guild.fetch_member(int(uid))
+                except (discord.NotFound, discord.HTTPException):
+                    to_delete.append(uid)
+                    continue
+            current_rank = None
+            for role in member.roles:
+                if role.id in RANK_IDS:
+                    current_rank = role.name
+                    break
+            result.append({
+                "id":        uid,
+                "name":      member.display_name,
+                "username":  str(member),
+                "avatar":    str(member.display_avatar.url),
+                "rank":      current_rank or info.get("rank", "-"),
+                "in_server": True,
+            })
+
+    if guild:
+        run_coro(fetch_all_tracked())
     if to_delete:
         for uid in to_delete:
             del tracked[uid]
@@ -983,18 +992,28 @@ def api_add_tracked():
     guild = get_guild()
     added = []; missing = []
     tracked = load_tracked()
-    for uid in ids:
-        uid = str(uid)
-        member = guild.get_member(int(uid)) if guild else None
-        if member is None:
-            missing.append(uid)
-        else:
-            rank = None
-            for role in member.roles:
-                if role.id in RANK_IDS:
-                    rank = role.name; break
-            tracked[uid] = {"name": member.display_name, "rank": rank or "-"}
-            added.append(uid)
+
+    async def fetch_all():
+        for uid in ids:
+            uid_str = str(uid)
+            try:
+                member = await guild.fetch_member(int(uid))
+                rank = None
+                for role in member.roles:
+                    if role.id in RANK_IDS:
+                        rank = role.name; break
+                tracked[uid_str] = {"name": member.display_name, "rank": rank or "-"}
+                added.append(uid_str)
+            except discord.NotFound:
+                missing.append(uid_str)
+            except discord.HTTPException:
+                missing.append(uid_str)
+
+    if guild:
+        run_coro(fetch_all())
+    else:
+        missing.extend([str(uid) for uid in ids])
+
     save_tracked(tracked)
     return jsonify({"added": added, "missing": missing})
 
@@ -1018,7 +1037,10 @@ def api_promote():
         for uid in ids:
             member = guild.get_member(int(uid))
             if not member:
-                results.append({"id": uid, "status": "not_found"}); continue
+                try:
+                    member = await guild.fetch_member(int(uid))
+                except (discord.NotFound, discord.HTTPException):
+                    results.append({"id": uid, "status": "not_found"}); continue
             current_rank_role = None
             for role in member.roles:
                 if role.id in RANK_IDS:
@@ -1093,6 +1115,32 @@ def api_delete_template(tid):
     templates = [t for t in load_templates() if t.get("id") != tid]
     save_templates(templates)
     return jsonify({"ok": True})
+
+@app.route("/api/debug")
+@login_required
+def api_debug():
+    guild = get_guild()
+    if not guild:
+        return jsonify({
+            "error": "البوت مش شايف السيرفر",
+            "guild_id_configured": GUILD_ID,
+            "bot_guilds": [{"id": str(g.id), "name": g.name} for g in bot.guilds],
+            "bot_ready": bot.is_ready(),
+        })
+    members = [{"id": str(m.id), "name": m.display_name} for m in guild.members[:20]]
+    return jsonify({
+        "ok": True,
+        "guild_name": guild.name,
+        "guild_id": str(guild.id),
+        "member_count": guild.member_count,
+        "cached_members": len(guild.members),
+        "bot_ready": bot.is_ready(),
+        "sample_members": members,
+        "intents": {
+            "members": bot.intents.members,
+            "presences": bot.intents.presences,
+        }
+    })
 
 @app.route("/api/ranks", methods=["GET"])
 @login_required
