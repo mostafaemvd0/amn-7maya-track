@@ -949,6 +949,33 @@ async def on_member_remove(member: discord.Member):
             embed.add_field(name="ID", value=str(member.id), inline=False)
             await channel.send(embed=embed)
 
+@bot.event
+async def on_member_update(before: discord.Member, after: discord.Member):
+    tracked = load_tracked()
+    if str(after.id) not in tracked:
+        return
+    channel = bot.get_channel(NOTIFY_CHANNEL_ID)
+    if not channel:
+        return
+    # تغيير النيكنيم داخل السيرفر
+    if before.nick != after.nick:
+        embed = discord.Embed(title="✏️ عضو غيّر اسمه في السيرفر", color=discord.Color.orange())
+        embed.add_field(name="👤 اليوزرنيم", value=str(after), inline=False)
+        embed.add_field(name="🆔 الـ ID", value=str(after.id), inline=False)
+        embed.add_field(name="📛 الاسم القديم", value=before.nick or before.name, inline=True)
+        embed.add_field(name="📛 الاسم الجديد", value=after.nick or after.name, inline=True)
+        embed.set_footer(text="تم الرصد بواسطة المتتبع")
+        await channel.send(embed=embed)
+    # تغيير اليوزرنيم الأصلي
+    if before.name != after.name:
+        embed = discord.Embed(title="✏️ عضو غيّر يوزرنيمه", color=discord.Color.orange())
+        embed.add_field(name="🆔 الـ ID", value=str(after.id), inline=False)
+        embed.add_field(name="👤 اليوزر القديم", value=str(before), inline=True)
+        embed.add_field(name="👤 اليوزر الجديد", value=str(after), inline=True)
+        embed.set_footer(text="تم الرصد بواسطة المتتبع")
+        await channel.send(embed=embed)
+
+
 # ===== Routes =====
 
 @app.route("/")
