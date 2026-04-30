@@ -643,7 +643,7 @@ function renderTracked() {
 
 async function bulkAdd() {
   const text = document.getElementById('bulkIds').value;
-  const ids  = (text.match(/\\d{17,20}/g) || []).map(Number);
+  const ids  = (text.match(/\\d{17,20}/g) || []);  // keep as strings to avoid JS integer overflow
   if (!ids.length) { toast('مفيش IDs صالحة!', 'error'); return; }
   const r = await fetch('/api/tracked', {
     method: 'POST',
@@ -997,8 +997,8 @@ def api_add_tracked():
 
     async def fetch_batch(batch):
         for uid in batch:
-            uid_str = str(uid)
-            member = guild.get_member(int(uid))
+            uid_str = str(uid).strip()  # keep as string, no int conversion loss
+            member = guild.get_member(int(uid_str))
             if member is None:
                 try:
                     member = await guild.fetch_member(int(uid))
