@@ -943,10 +943,18 @@ async def on_member_remove(member: discord.Member):
     if str(member.id) in tracked:
         channel = bot.get_channel(NOTIFY_CHANNEL_ID)
         if channel:
-            embed = discord.Embed(title="\u0639\u0636\u0648 \u063a\u0627\u062f\u0631 \u0627\u0644\u0633\u064a\u0631\u0641\u0631", color=discord.Color.red())
-            embed.add_field(name="\u0627\u0644\u0627\u0633\u0645", value=member.display_name, inline=False)
-            embed.add_field(name="\u064a\u0648\u0632\u0631\u0646\u064a\u0645", value=str(member), inline=False)
-            embed.add_field(name="ID", value=str(member.id), inline=False)
+            # get rank from roles
+            current_rank = None
+            for role in member.roles:
+                if role.id in RANK_IDS:
+                    current_rank = role.name
+                    break
+            embed = discord.Embed(title="🚪 عضو غادر السيرفر", color=discord.Color.red())
+            embed.add_field(name="📛 الاسم في السيرفر", value=member.display_name, inline=False)
+            embed.add_field(name="🎖️ الرتبة", value=current_rank or "بدون رتبة", inline=False)
+            embed.add_field(name="🆔 الـ ID", value=str(member.id), inline=False)
+            embed.add_field(name="👤 اليوزرنيم", value=str(member), inline=False)
+            embed.set_footer(text="تم الرصد بواسطة المتتبع")
             await channel.send(embed=embed)
 
 @bot.event
