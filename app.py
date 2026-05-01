@@ -1407,6 +1407,13 @@ def api_logout():
     session.clear()
     return jsonify({"ok": True})
 
+@app.route("/api/reset-tracked", methods=["POST"])
+@login_required
+def api_reset_tracked():
+    save_tracked({})
+    return jsonify({"ok": True, "message": "تم مسح القائمة"})
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
