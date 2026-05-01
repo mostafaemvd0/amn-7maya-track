@@ -940,8 +940,9 @@ loadTemplates();
 intents = discord.Intents.default()
 intents.members = True
 intents.message_content = True
+intents.presences = True
 
-bot = commands.Bot(command_prefix="!", intents=intents)
+bot = commands.Bot(command_prefix="!", intents=intents, chunk_guilds_at_startup=True)
 loop = asyncio.new_event_loop()
 
 def run_bot():
@@ -982,6 +983,10 @@ def save_templates(data):
 @bot.event
 async def on_ready():
     print(f"Bot ready: {bot.user}")
+    for guild in bot.guilds:
+        if not guild.chunked:
+            await guild.chunk()
+            print(f"Chunked {guild.name}: {len(guild.members)} members cached")
 
 @bot.event
 async def on_member_remove(member: discord.Member):
@@ -1083,38 +1088,21 @@ def api_add_tracked():
     added = []; missing = []
     tracked = load_tracked()
 
-    BATCH = 10  # process 10 members at a time
-
-    async def fetch_batch(batch):
-        for uid in batch:
-            uid_str = str(uid).strip()  # keep as string, no int conversion loss
-            member = guild.get_member(int(uid_str))
-            if member is None:
-                try:
-                    member = await guild.fetch_member(int(uid))
-                    await asyncio.sleep(0.2)
-                except discord.NotFound:
-                    missing.append(uid_str)
-                    continue
-                except discord.HTTPException as e:
-                    print(f"HTTP error {uid_str}: {e.status} {e.text}")
-                    missing.append(uid_str)
-                    continue
-            rank = None
-            for role in member.roles:
-                if role.id in RANK_IDS:
-                    rank = role.name; break
-            tracked[uid_str] = {"name": member.display_name, "rank": rank or "-"}
-            added.append(uid_str)
-
-    if guild:
-        # split into batches of 10 and run each
-        batches = [ids[i:i+BATCH] for i in range(0, len(ids), BATCH)]
-        for batch in batches:
-            future = asyncio.run_coroutine_threadsafe(fetch_batch(batch), loop)
-            future.result(timeout=60)
-    else:
-        missing.extend([str(uid) for uid in ids])
+    for uid in ids:
+        uid_str = str(uid).strip()
+        # cache only — instant
+        member = guild.get_member(int(uid_str)) if guild else None
+        if member is None:
+            # save with placeholder, mark as added anyway
+            # background task will update info later
+            missing.append(uid_str)
+            continue
+        rank = None
+        for role in member.roles:
+            if role.id in RANK_IDS:
+                rank = role.name; break
+        tracked[uid_str] = {"name": member.display_name, "rank": rank or "-"}
+        added.append(uid_str)
 
     save_tracked(tracked)
     return jsonify({"added": added, "missing": missing})
