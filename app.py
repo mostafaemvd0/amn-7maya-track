@@ -704,62 +704,60 @@ function deselectAllPromote() {
 }
 
 async function doPromote() {
-  const selected = [...document.querySelectorAll('.promote-card.selected')].map(c => c.id.replace('pc-',''));
+  var selected = Array.from(document.querySelectorAll('.promote-card.selected')).map(function(c){ return c.id.replace('pc-',''); });
   if (!selected.length) { toast('اختار على الأقل عضو واحد', 'error'); return; }
   document.getElementById('promoteBtn').disabled = true;
   document.getElementById('promoteResult').innerHTML = '<div class="spinner"></div>';
   try {
-    const r = await fetch('/api/promote', {
+    var r = await fetch('/api/promote', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ids: selected})
     });
     if (r.status === 401) { window.location.href = '/login'; return; }
     if (!r.ok) {
-      const txt = await r.text();
-      document.getElementById('promoteResult').innerHTML = `<span class="result-err">❌ خطأ ${r.status}: ${txt.substring(0,200)}</span>`;
+      var txt = await r.text();
+      document.getElementById('promoteResult').innerHTML = '<span class="result-err">خطا ' + r.status + '</span>';
       document.getElementById('promoteBtn').disabled = false;
       return;
     }
-    const results = await r.json();
-    const statusMap = {ok:'✅', not_found:'❌ مش في السيرفر', no_rank:'⚠️ بدون رتبة', max_rank:'🏆 أعلى رتبة', role_missing:'❌ رتبة مش موجودة'};
-    const html = results.map(res => {
-      const label = res.status === 'ok'
-        ? `<span class="result-ok">✅ ${res.name}: ${res.from} ← ${res.to}</span>`
-        : `<span class="result-err">${statusMap[res.status]||res.status}: ${res.id}</span>`;
-      return label;
-    }).join('<br>');
+    var results = await r.json();
+    var statusMap = {ok:'ok', not_found:'مش في السيرفر', no_rank:'بدون رتبة', max_rank:'أعلى رتبة', role_missing:'رتبة مش موجودة'};
+    var lines = results.map(function(res) {
+      if (res.status === 'ok') return '<span class="result-ok">✅ ' + res.name + ': ' + res.from + ' ← ' + res.to + '</span>';
+      return '<span class="result-err">❌ ' + (statusMap[res.status]||res.status) + ': ' + res.id + '</span>';
+    });
+    var html = lines.join('<br>') || '<span class="result-err">مفيش نتايج</span>';
 
-    // Build copy-ready mention text
-    const ok = results.filter(r => r.status === 'ok');
-    let copyText = '';
+    var ok = results.filter(function(r){ return r.status === 'ok'; });
+    var copyText = '';
     if (ok.length) {
-      const groups = {};
+      var groups = {};
       ok.forEach(function(r) {
-        const key = r.to_role_id || r.to;
+        var key = r.to_role_id || r.to;
         if (!groups[key]) groups[key] = {role_id: r.to_role_id, members: []};
         groups[key].members.push(r.id);
       });
-      const parts = [];
+      var parts = [];
       Object.values(groups).forEach(function(g) {
-        const roleLine = g.role_id ? ('<@&' + g.role_id + '>') : g.to;
-        const memberLines = g.members.map(function(id){ return '<@' + id + '>'; }).join('\n');
+        var roleLine = g.role_id ? ('<@&' + g.role_id + '>') : '';
+        var memberLines = g.members.map(function(id){ return '<@' + id + '>'; }).join('\n');
         parts.push(roleLine + '\n\n' + memberLines + '\n');
       });
       copyText = parts.join('\n\n');
     }
-    let resultHTML = html || '<span class="result-err">مفيش نتايج</span>';
+
     if (copyText) {
-      resultHTML += '<div style="margin-top:1rem;background:var(--surface);border:1px solid var(--gold);border-radius:8px;padding:1rem;">' +
+      html += '<div style="margin-top:1rem;background:var(--surface);border:1px solid var(--gold);border-radius:8px;padding:1rem;">' +
         '<div style="font-size:.82rem;color:var(--gold);font-weight:700;margin-bottom:.5rem;">📋 نص جاهز للنسخ:</div>' +
         '<pre id="copyBox" style="font-family:monospace;font-size:.88rem;color:var(--text);white-space:pre-wrap;word-break:break-all;margin-bottom:.75rem;">' + copyText + '</pre>' +
         '<button class="btn btn-gold btn-sm" onclick="copyMentions()">📋 نسخ</button></div>';
     }
-    document.getElementById('promoteResult').innerHTML = resultHTML;
+    document.getElementById('promoteResult').innerHTML = html;
     toast('تمت الترقية: ' + ok.length + ' عضو', 'success');
     loadTracked();
   } catch(e) {
-    document.getElementById('promoteResult').innerHTML = `<span class="result-err">❌ خطأ: ${e.message}</span>`;
+    document.getElementById('promoteResult').innerHTML = '<span class="result-err">خطأ: ' + e.message + '</span>';
   }
   document.getElementById('promoteBtn').disabled = false;
 }
