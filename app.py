@@ -723,8 +723,37 @@ async function doPromote() {
         : `<span class="result-err">${statusMap[res.status]||res.status}: ${res.id}</span>`;
       return label;
     }).join('<br>');
-    document.getElementById('promoteResult').innerHTML = html || '<span class="result-err">مفيش نتايج</span>';
-    toast(`تمت الترقية: ${results.filter(r=>r.status==='ok').length} عضو`, 'success');
+
+    // Build copy-ready mention text grouped by new rank role_id
+    const ok = results.filter(r => r.status === 'ok');
+    let copyText = '';
+    if (ok.length) {
+      // group by to_role_id
+      const groups = {};
+      ok.forEach(r => {
+        const key = r.to_role_id || r.to;
+        if (!groups[key]) groups[key] = {role_id: r.to_role_id, members: []};
+        groups[key].members.push(r.id);
+      });
+      const lines = Object.values(groups).map(g => {
+        const roleMention = g.role_id ? `<@&${g.role_id}>` : g.role_name;
+        const memberMentions = g.members.map(id => `<@${id}>`).join('\n');
+        return `${roleMention}\n\n${memberMentions}\n`;
+      });
+      copyText = lines.join('\n\n');
+    }
+
+    let resultHTML = html || '<span class="result-err">مفيش نتايج</span>';
+    if (copyText) {
+      resultHTML += `
+      <div style="margin-top:1rem;background:var(--surface);border:1px solid var(--gold);border-radius:8px;padding:1rem;">
+        <div style="font-size:.82rem;color:var(--gold);font-weight:700;margin-bottom:.5rem;">📋 نص جاهز للنسخ:</div>
+        <pre id="copyBox" style="font-family:monospace;font-size:.88rem;color:var(--text);white-space:pre-wrap;word-break:break-all;margin-bottom:.75rem;">${copyText}</pre>
+        <button class="btn btn-gold btn-sm" onclick="copyMentions()">📋 نسخ</button>
+      </div>`;
+    }
+    document.getElementById('promoteResult').innerHTML = resultHTML;
+    toast(`تمت الترقية: ${ok.length} عضو`, 'success');
     loadTracked();
   } catch(e) {
     document.getElementById('promoteResult').innerHTML = `<span class="result-err">❌ خطأ: ${e.message}</span>`;
@@ -872,6 +901,23 @@ async function deleteTemplate(id) {
 
 function escHtml(s) {
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>');
+}
+
+// ===== Copy mentions =====
+function copyMentions() {
+  const text = document.getElementById('copyBox').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    toast('تم النسخ ✅', 'success');
+  }).catch(() => {
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('تم النسخ ✅', 'success');
+  });
 }
 
 // ===== Logout =====
@@ -1116,7 +1162,8 @@ def api_promote():
             await member.remove_roles(current_rank_role)
             await member.add_roles(next_role)
             results.append({"id": uid, "name": member.display_name,
-                            "from": current_rank_role.name, "to": next_role.name, "status": "ok"})
+                            "from": current_rank_role.name, "to": next_role.name,
+                            "to_role_id": str(next_role.id), "status": "ok"})
 
     try:
         run_coro(do_promote())
