@@ -1043,18 +1043,11 @@ def api_tracked():
     tracked = load_tracked()
     guild = get_guild()
     result = []
-    to_delete = []
 
-    async def fetch_all_tracked():
-        for uid, info in tracked.items():
-            # try cache first, fallback to fetch
-            member = guild.get_member(int(uid))
-            if member is None:
-                try:
-                    member = await guild.fetch_member(int(uid))
-                except (discord.NotFound, discord.HTTPException):
-                    to_delete.append(uid)
-                    continue
+    for uid, info in tracked.items():
+        # use cache only — instant, no HTTP calls
+        member = guild.get_member(int(uid)) if guild else None
+        if member:
             current_rank = None
             for role in member.roles:
                 if role.id in RANK_IDS:
@@ -1068,13 +1061,17 @@ def api_tracked():
                 "rank":      current_rank or info.get("rank", "-"),
                 "in_server": True,
             })
+        else:
+            # not in cache — return saved data instantly
+            result.append({
+                "id":        uid,
+                "name":      info.get("name", uid),
+                "username":  info.get("name", uid),
+                "avatar":    "https://cdn.discordapp.com/embed/avatars/0.png",
+                "rank":      info.get("rank", "-"),
+                "in_server": True,
+            })
 
-    if guild:
-        run_coro(fetch_all_tracked())
-    if to_delete:
-        for uid in to_delete:
-            del tracked[uid]
-        save_tracked(tracked)
     return jsonify(result)
 
 @app.route("/api/tracked", methods=["POST"])
