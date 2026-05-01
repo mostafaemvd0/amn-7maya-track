@@ -571,9 +571,7 @@ function switchTab(name) {
   const idx  = tabs.indexOf(name);
   document.querySelectorAll('.nav-tab')[idx].classList.add('active');
   document.getElementById('tab-'+name).classList.add('active');
-  if (name === 'tracked') loadTracked();
-  if (name === 'promote' && trackedData.length) renderPromoteGrid();
-  else if (name === 'promote') loadTracked();
+  if (name === 'tracked' || name === 'promote') loadTracked();
   if (name === 'messages' || name === 'templates') loadTemplates();
 }
 
@@ -604,16 +602,12 @@ async function loadTracked() {
   document.getElementById('trackedBody').innerHTML = '<div class="spinner"></div>';
   document.getElementById('promoteGrid').innerHTML  = '<div class="spinner"></div>';
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-    const r = await fetch('/api/tracked', {signal: controller.signal});
-    clearTimeout(timeout);
-    if (r.status === 401) { window.location.href = '/login'; return; }
+    const r = await fetch('/api/tracked');
     trackedData = await r.json();
     renderTracked();
     renderPromoteGrid();
   } catch(e) {
-    document.getElementById('trackedBody').innerHTML = '<div class="empty-state"><div class="big">⚠️</div>تعذر تحميل البيانات — <button class="btn btn-ghost btn-sm" onclick="loadTracked()">🔄 إعادة المحاولة</button></div>';
+    document.getElementById('trackedBody').innerHTML = '<div class="empty-state"><div class="big">⚠️</div>تعذر تحميل البيانات</div>';
   }
 }
 
@@ -989,17 +983,10 @@ def save_templates(data):
 @bot.event
 async def on_ready():
     print(f"Bot ready: {bot.user}")
-    # chunk members in background after ready
     for guild in bot.guilds:
-        bot.loop.create_task(chunk_guild(guild))
-
-async def chunk_guild(guild):
-    try:
         if not guild.chunked:
             await guild.chunk()
-            print(f"Chunked {guild.name}: {len(guild.members)} members")
-    except Exception as e:
-        print(f"Chunk error: {e}")
+            print(f"Chunked {guild.name}: {len(guild.members)} members cached")
 
 @bot.event
 async def on_member_remove(member: discord.Member):
