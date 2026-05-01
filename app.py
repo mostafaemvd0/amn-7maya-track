@@ -571,7 +571,9 @@ function switchTab(name) {
   const idx  = tabs.indexOf(name);
   document.querySelectorAll('.nav-tab')[idx].classList.add('active');
   document.getElementById('tab-'+name).classList.add('active');
-  if (name === 'tracked' || name === 'promote') loadTracked();
+  if (name === 'tracked') loadTracked();
+  if (name === 'promote' && trackedData.length) renderPromoteGrid();
+  else if (name === 'promote') loadTracked();
   if (name === 'messages' || name === 'templates') loadTemplates();
 }
 
@@ -602,12 +604,16 @@ async function loadTracked() {
   document.getElementById('trackedBody').innerHTML = '<div class="spinner"></div>';
   document.getElementById('promoteGrid').innerHTML  = '<div class="spinner"></div>';
   try {
-    const r = await fetch('/api/tracked');
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const r = await fetch('/api/tracked', {signal: controller.signal});
+    clearTimeout(timeout);
+    if (r.status === 401) { window.location.href = '/login'; return; }
     trackedData = await r.json();
     renderTracked();
     renderPromoteGrid();
   } catch(e) {
-    document.getElementById('trackedBody').innerHTML = '<div class="empty-state"><div class="big">⚠️</div>تعذر تحميل البيانات</div>';
+    document.getElementById('trackedBody').innerHTML = '<div class="empty-state"><div class="big">⚠️</div>تعذر تحميل البيانات — <button class="btn btn-ghost btn-sm" onclick="loadTracked()">🔄 إعادة المحاولة</button></div>';
   }
 }
 
@@ -724,36 +730,33 @@ async function doPromote() {
       return label;
     }).join('<br>');
 
-    // Build copy-ready mention text grouped by new rank role_id
+    // Build copy-ready mention text
     const ok = results.filter(r => r.status === 'ok');
     let copyText = '';
     if (ok.length) {
-      // group by to_role_id
       const groups = {};
-      ok.forEach(r => {
+      ok.forEach(function(r) {
         const key = r.to_role_id || r.to;
         if (!groups[key]) groups[key] = {role_id: r.to_role_id, members: []};
         groups[key].members.push(r.id);
       });
-      const lines = Object.values(groups).map(g => {
-        const roleMention = g.role_id ? `<@&${g.role_id}>` : g.role_name;
-        const memberMentions = g.members.map(id => `<@${id}>`).join('\n');
-        return `${roleMention}\n\n${memberMentions}\n`;
+      const parts = [];
+      Object.values(groups).forEach(function(g) {
+        const roleLine = g.role_id ? ('<@&' + g.role_id + '>') : g.to;
+        const memberLines = g.members.map(function(id){ return '<@' + id + '>'; }).join('\n');
+        parts.push(roleLine + '\n\n' + memberLines + '\n');
       });
-      copyText = lines.join('\n\n');
+      copyText = parts.join('\n\n');
     }
-
     let resultHTML = html || '<span class="result-err">مفيش نتايج</span>';
     if (copyText) {
-      resultHTML += `
-      <div style="margin-top:1rem;background:var(--surface);border:1px solid var(--gold);border-radius:8px;padding:1rem;">
-        <div style="font-size:.82rem;color:var(--gold);font-weight:700;margin-bottom:.5rem;">📋 نص جاهز للنسخ:</div>
-        <pre id="copyBox" style="font-family:monospace;font-size:.88rem;color:var(--text);white-space:pre-wrap;word-break:break-all;margin-bottom:.75rem;">${copyText}</pre>
-        <button class="btn btn-gold btn-sm" onclick="copyMentions()">📋 نسخ</button>
-      </div>`;
+      resultHTML += '<div style="margin-top:1rem;background:var(--surface);border:1px solid var(--gold);border-radius:8px;padding:1rem;">' +
+        '<div style="font-size:.82rem;color:var(--gold);font-weight:700;margin-bottom:.5rem;">📋 نص جاهز للنسخ:</div>' +
+        '<pre id="copyBox" style="font-family:monospace;font-size:.88rem;color:var(--text);white-space:pre-wrap;word-break:break-all;margin-bottom:.75rem;">' + copyText + '</pre>' +
+        '<button class="btn btn-gold btn-sm" onclick="copyMentions()">📋 نسخ</button></div>';
     }
     document.getElementById('promoteResult').innerHTML = resultHTML;
-    toast(`تمت الترقية: ${ok.length} عضو`, 'success');
+    toast('تمت الترقية: ' + ok.length + ' عضو', 'success');
     loadTracked();
   } catch(e) {
     document.getElementById('promoteResult').innerHTML = `<span class="result-err">❌ خطأ: ${e.message}</span>`;
@@ -983,10 +986,17 @@ def save_templates(data):
 @bot.event
 async def on_ready():
     print(f"Bot ready: {bot.user}")
+    # chunk members in background after ready
     for guild in bot.guilds:
+        bot.loop.create_task(chunk_guild(guild))
+
+async def chunk_guild(guild):
+    try:
         if not guild.chunked:
             await guild.chunk()
-            print(f"Chunked {guild.name}: {len(guild.members)} members cached")
+            print(f"Chunked {guild.name}: {len(guild.members)} members")
+    except Exception as e:
+        print(f"Chunk error: {e}")
 
 @bot.event
 async def on_member_remove(member: discord.Member):
